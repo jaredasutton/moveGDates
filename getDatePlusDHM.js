@@ -24,8 +24,11 @@ Date.prototype.toIsoString = function() {
   );
 };
 
-module.exports = (dateString, days) => {
+module.exports = (dateString, { minutes = 0, hours = 0, days = 0 }) => {
   let date = new Date(dateString);
+
+  date.setMinutes(date.getMinutes() + minutes);
+  date.setHours(date.getHours() + hours);
   date.setDate(date.getDate() + days);
   return date.toIsoString();
 };

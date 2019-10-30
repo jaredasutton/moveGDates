@@ -1,5 +1,5 @@
 const getCalendar = require("./getCalendar.js");
-const moveDateNDays = require("./moveDateNDays.js");
+const getDatePlusDHM = require("./getDatePlusDHM.js");
 
 module.exports = (options, movement) => {
   //console.log(options);
@@ -23,9 +23,9 @@ module.exports = (options, movement) => {
             eventsStr +=
               JSON.stringify(event) + (i === events.length - 1 ? "\n" : ",\n");
             if (movement) {
-              let newStart = moveDateNDays(start, movement);
-              let newEnd = moveDateNDays(end, movement);
-              let until = moveDateNDays(start, -1);
+              let newStart = getDatePlusDHM(start, movement);
+              let newEnd = getDatePlusDHM(end, movement);
+              let until = getDatePlusDHM(start, { days: -1 });
               let newUntil =
                 new Date(until)
                   .toISOString()

@@ -1,5 +1,5 @@
 const getCalendar = require("./getCalendar.js");
-const moveDateNDays = require("./moveDateNDays.js");
+const getDatePlusDHM = require("./getDatePlusDHM.js");
 let getEventRecurrenceByREId = require("./getEventRecurrenceByREId.js");
 let truncateRecurringEvent = require("./truncateRecurringEvent.js");
 let createNewRecurringEvent = require("./createNewRecurringEvent.js");
@@ -36,9 +36,9 @@ module.exports = (options, movement) => {
           let gotEventRecurrence = getEventRecurrenceByREId(recurringEventId);
 
           if (movement) {
-            let newStart = moveDateNDays(start, movement);
-            let newEnd = moveDateNDays(end, movement);
-            let until = moveDateNDays(start, -1);
+            let newStart = getDatePlusDHM(start, movement);
+            let newEnd = getDatePlusDHM(end, movement);
+            let until = getDatePlusDHM(start, { days: -1 });
             let newUntil = convertDateToRFC5545String(until);
 
             gotEventRecurrence
