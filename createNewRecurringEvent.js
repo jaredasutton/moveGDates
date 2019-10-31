@@ -14,7 +14,7 @@ module.exports = function(calendarId, summary, newStart, newEnd) {
               dateTime: newEnd,
               timeZone: "America/New_York"
             },
-            recurrence: [recurrence]
+            recurrence
           }
         },
         (err, res) => {

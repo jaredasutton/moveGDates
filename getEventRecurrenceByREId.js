@@ -7,8 +7,8 @@ module.exports = function(calendarId, recurringEventId) {
       },
       (err, res) => {
         if (err) return reject(console.error(err));
-        let recurrence = res.data.recurrence[0];
-        resolve(recurrence);
+        let recurringEvent = res.data;
+        resolve(recurringEvent.recurrence);
       }
     );
   });

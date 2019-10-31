@@ -5,6 +5,8 @@ let truncateRecurringEvent = require("./truncateRecurringEvent.js");
 let createNewRecurringEvent = require("./createNewRecurringEvent.js");
 let getEventsByOptions = require("./getEventsByOptions.js");
 const convertDateToRFC5545String = require("./convertDateToRFC5545String.js");
+const mapRecurStrToObj = require("./mapRecurStrToObj.js");
+const mapRecurObjToStr = require("./mapRecurObjToStr.js");
 
 module.exports = (options, movement) => {
   let { calendarId } = options;
@@ -31,6 +33,7 @@ module.exports = (options, movement) => {
           const start = event.start.dateTime;
           const end = event.end.dateTime || event.end.date;
           const recurringEventId = event.recurringEventId;
+          const summary = event.summary;
 
           recurringRoster[recurringEventId] = true;
           let gotEventRecurrence = getEventRecurrenceByREId(recurringEventId);
@@ -42,8 +45,22 @@ module.exports = (options, movement) => {
             let newUntil = convertDateToRFC5545String(until);
 
             gotEventRecurrence
-              .then(truncateRecurringEvent(recurringEventId, newUntil, summary))
-              .then(createNewRecurringEvent(summary, newStart, newEnd));
+              .then(([prvRecurStr]) => {
+                let prvRecurObj = mapRecurStrToObj(prvRecurStr);
+                let newRecur = [
+                  mapRecurObjToStr({
+                    ...prvRecurObj,
+                    UNTIL: newUntil
+                  })
+                ];
+                let prvRecur = [prvRecurStr];
+                let prvAndNewRecur = { newRecur, prvRecur };
+                console.log(prvAndNewRecur);
+                return prvAndNewRecur;
+              })
+              .then(truncateRecurringEvent(recurringEventId, summary))
+              .then(createNewRecurringEvent(summary, newStart, newEnd))
+              .catch(console.error);
           } else {
             gotEventRecurrence.then(console.log);
           }
