@@ -5,10 +5,11 @@ module.exports = function(calendarId, recurringEventId) {
         calendarId,
         eventId: recurringEventId
       },
-      (err, res) => {
+      (err, { data }) => {
+        // res.data
         if (err) return reject(console.error(err));
-        let recurringEvent = res.data;
-        resolve(recurringEvent.recurrence);
+        // data is the recurring event
+        resolve(data.recurrence);
       }
     );
   });

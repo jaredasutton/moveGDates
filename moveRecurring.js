@@ -1,117 +1,75 @@
 const getCalendar = require("./getCalendar.js");
 const getDatePlusDHM = require("./getDatePlusDHM.js");
+let getEventRecurrenceByREId = require("./getEventRecurrenceByREId.js");
+let truncateRecurringEvent = require("./truncateRecurringEvent.js");
+let createNewRecurringEvent = require("./createNewRecurringEvent.js");
+let getEventsByOptions = require("./getEventsByOptions.js");
+const convertDateToRFC5545String = require("./convertDateToRFC5545String.js");
+const mapRecurStrToObj = require("./mapRecurStrToObj.js");
+const mapRecurObjToStr = require("./mapRecurObjToStr.js");
 
 module.exports = (options, movement) => {
-  //console.log(options);
+  let { calendarId } = options;
   let recurringRoster = {};
+  let recurringEvents = [];
   getCalendar().then(cal => {
-    cal.events.list(options, (err, { data }) => {
-      if (err) return console.log("The API returned an error: " + err);
-      const events = data.items;
-      let eventsStr = "[";
-      if (events.length) {
-        events.forEach((event, i) => {
-          if (
-            event.start &&
-            event.start.dateTime &&
-            event.recurringEventId &&
-            !recurringRoster[event.recurringEventId]
-          ) {
-            const start = event.start.dateTime;
-            const end = event.end.dateTime || event.end.date;
-            //console.log(`${start} - ${end} -- ${event.summary}`);
-            eventsStr +=
-              JSON.stringify(event) + (i === events.length - 1 ? "\n" : ",\n");
-            if (movement) {
-              let newStart = getDatePlusDHM(start, movement);
-              let newEnd = getDatePlusDHM(end, movement);
-              let until = getDatePlusDHM(start, { days: -1 });
-              let newUntil =
-                new Date(until)
-                  .toISOString()
-                  .split("-")
-                  .join("")
-                  .split(":")
-                  .join("")
-                  .slice(0, 15) + "Z";
-              //console.log(event);
-              //console.log(` -› moved to ${newStart} - ${newEnd}`);
-              //console.log(`newUntil: ${newUntil}`);
-              //console.log("recurringEventId: " + event.recurringEventId);
-              recurringRoster[event.recurringEventId] = true;
-              cal.events.get(
-                {
-                  calendarId: options.calendarId,
-                  eventId: event.recurringEventId
-                },
-                (err, res) => {
-                  if (err) return console.error(err);
-                  let recurrence = res.data.recurrence[0];
-                  cal.events.patch(
-                    {
-                      calendarId: options.calendarId,
-                      eventId: event.recurringEventId,
-                      requestBody: {
-                        recurrence: [recurrence + `;UNTIL=${newUntil}`]
-                      }
-                    },
-                    (err, res) => {
-                      if (err)
-                        return console.log(
-                          `${event.summary} (${event.id}): ERROR`,
-                          err
-                        );
-                      console.log(
-                        `old recurring event: ${event.summary} (${event.id}): ${res.status} (${res.statusText}) - ${recurrence}`
-                      );
-                      cal.events.insert(
-                        {
-                          calendarId: options.calendarId,
-                          requestBody: {
-                            summary: event.summary,
-                            start: {
-                              dateTime: newStart,
-                              timeZone: "America/New_York"
-                            },
-                            end: {
-                              dateTime: newEnd,
-                              timeZone: "America/New_York"
-                            },
-                            recurrence: [recurrence]
-                          }
-                        },
-                        (err, res) => {
-                          if (err) console.log(err);
-                          else console.log(res);
-                        }
-                      );
-                    }
-                  );
-                }
-              );
-            } else {
-              console.log("recurringEventId: " + event.recurringEventId);
-              cal.events.get(
-                {
-                  calendarId: options.calendarId,
-                  eventId: event.recurringEventId
-                },
-                (err, res) => {
-                  if (err) return console.error(err);
-                  console.log(res.data);
-                }
-              );
-            }
-          }
-        });
-      } else {
-        console.log("No upcoming events found.");
+    getEventRecurrenceByREId = getEventRecurrenceByREId.bind(cal, calendarId);
+    truncateRecurringEvent = truncateRecurringEvent.bind(cal, calendarId);
+    createNewRecurringEvent = createNewRecurringEvent.bind(cal, calendarId);
+    getEventsByOptions = getEventsByOptions.bind(cal);
+
+    getEventsByOptions(options).then(events => {
+      if (events.length < 1) {
+        return console.log("No upcoming events found.");
       }
-      eventsStr += "]";
+      events.forEach(event => {
+        if (
+          event.start &&
+          event.start.dateTime &&
+          event.recurringEventId &&
+          !recurringRoster[event.recurringEventId]
+        ) {
+          recurringEvents.push(event);
+          const start = event.start.dateTime;
+          const end = event.end.dateTime || event.end.date;
+          const recurringEventId = event.recurringEventId;
+          const summary = event.summary;
+
+          recurringRoster[recurringEventId] = true;
+          let gotEventRecurrence = getEventRecurrenceByREId(recurringEventId);
+
+          if (movement) {
+            let newStart = getDatePlusDHM(start, movement);
+            let newEnd = getDatePlusDHM(end, movement);
+            let until = getDatePlusDHM(start, { days: -1 });
+            let newUntil = convertDateToRFC5545String(until);
+
+            gotEventRecurrence
+              .then(([prvRecurStr]) => {
+                let prvRecurObj = mapRecurStrToObj(prvRecurStr);
+                let newRecur = [
+                  mapRecurObjToStr({
+                    ...prvRecurObj,
+                    UNTIL: newUntil
+                  })
+                ];
+                let prvRecur = [prvRecurStr];
+                let prvAndNewRecur = { newRecur, prvRecur };
+                return prvAndNewRecur;
+              })
+              .then(truncateRecurringEvent(recurringEventId, summary))
+              .then(createNewRecurringEvent(summary, newStart, newEnd))
+              .catch(console.error);
+          } else {
+            gotEventRecurrence.then(console.log);
+          }
+        }
+      });
+
       let fileContents = `{
         "options": ${JSON.stringify(options)},
         "date": ${JSON.stringify(new Date())},
-        "events": ${eventsStr}
+        "events": ${JSON.stringify(recurringEvents)}
       }`;
       fs.writeFile(
         path.resolve(__dirname, "./logs/recurringEvents.json"),
