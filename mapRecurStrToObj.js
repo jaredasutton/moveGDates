@@ -4,6 +4,12 @@
  * with the various recurrence rules delineated as key-value pairs.
  * @param {string} recurrence The recurrence string,
  *   e.g. "RRULE:FREQ=WEEKLY;WKST=MO;UNTIL=20191209T170000Z;BYDAY=SA,TH,TU"
+ *         => {
+ *              FREQ:"WEEKLY",
+ *              WKST:"MO",
+ *              UNTIL:"20191209T170000Z",
+ *              BYDAY:["SA","TH","TU"]
+ *            }
  */
 module.exports = recurrence => {
   let rules = recurrence.split(":")[1].split(";");
